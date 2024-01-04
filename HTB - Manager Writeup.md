@@ -24,7 +24,137 @@ Poniższy writeup zawiera informacje o metodologii, wykorzystanych narzędziach 
 | Certipy				| v4.7.0	 |
 
 ## Metodologia
-> TODO do screena htb-30.PNG
+### Weryfikacja połączenia i skanowanie
+Sprawdzono, czy można połączyć się z maszyną.
+
+![ping](images/htb-1.PNG "Weryfikacja połączenia z maszyną")
+
+Wykonano skanowanie sieci i portów z założeniem, że wszyscy z hostów są online.
+
+![nmap-1](images/htb-2.PNG "Skanowanie sieci i portów")
+
+Zauważono, że do najciekawszych otrzymanych otwartych portów należą: HTTP, Kerberos, LDAP, MSSQL i SMB.
+
+Wykonano dodatkowe skanowanie sieci z argumentem `-A`.
+
+![nmap-2](images/htb-3.1.PNG "Rozszerzone skanowanie sieci i portów")
+![nmap-3](images/htb-3.2.PNG "Rozszerzone skanowanie sieci i portów")
+![nmap-4](images/htb-3.3.PNG "Rozszerzone skanowanie sieci i portów")
+
+Przeprowadzono końcowy skan podsumowujący z argumentem `-sV`, przedstawiający najważniejsze informacje sieciowe o maszynie.
+
+![nmap-5](images/htb-4.PNG "Skan podsumowujący")
+
+Biorąc pod uwagę, że port 80 jest otwarty, sprawdzono czy można się połączyć ze stroną pod adresem maszyny `10.10.11.236`.
+
+![http-page-not-found](images/htb-5.PNG "Sprawdzenie strony pod adresem maszyny")
+
+### Enumeracja użytkowników
+Spróbowano wykonać enumerację użytkowników z wykorzystaniem komendy `nmap` na port 88.
+
+![nmap-enumeration](images/htb-6.PNG "Próba enumeracji użytkowników za pomocą komendy nmap")
+
+Skorzystano z modułu Metasploit Framework `auxillary/gather/kerberos_enumusers`, w celu enumeracji nazw użykowników.
+
+![msfconsole-kerberos_enumusers-conf-1](images/htb-7.PNG "Konfiguracja modułu kerberos_enumusers")
+![msfconsole-kerberos_enumusers-run-1](images/htb-8.PNG "Aktywacja modułu kerberos_enumusers")
+
+Uruchomiono powyższy Metasploit ponownie dodając listę haseł `rockyou.txt` do `PASS_FILE`.
+
+![msfconsole-kerberos_enumusers-conf-2](images/htb-9.PNG "Konfiguracja modułu kerberos_enumusers")
+![msfconsole-kerberos_enumusers-run-2](images/htb-10.PNG "Aktywacja modułu kerberos_enumusers")
+![msfconsole-kerberos_enumusers-run-3](images/htb-11.PNG "Aktywacja modułu kerberos_enumusers")
+
+Czego wynikiem było pomyślne znalezienie użytkownika *operator* z hasłem *operator*.
+
+### Eksploitacja MSSQL
+Korzystają ze znalezionej nazwy użytkownika i hasła, zalogowano się do bazy danych.
+
+![impacket-mssqlclient-login](images/htb-12.PNG "Logowanie MSSQL operator")
+
+Sprawdzono wersję serwera bazy danych i dostępne bazy danych.
+
+![mssqlclient-sysdatabases](images/htb-13.PNG "Znalezione bazy danych na serwerze")
+
+Sprawdzono informację o tabelach w znalezionych bazach danych w `INFORMATION_SCHEMA.TABLES`.
+
+![mssqlclient-information_schema-tables-1](images/htb-14.PNG "Informacje o tabelach w znalezionych bazach danych")
+![mssqlclient-information_schema-tables-2](images/htb-15.PNG "Informacje o tabelach w znalezionych bazach danych")
+
+Sprawdzenie, czy jest włączone logowanie na roota `sa`
+
+![mssqlclient-sa](images/htb-16.PNG "Logowanie na roota")
+
+Wyświetlono przywileje aktualnie zalogowanego użytkownika *Operator/guest*.
+
+![mssqlclient-privileges](images/htb-17.PNG "Sprawdzenie przywilejów aktualnie zalogowane użytkownika")
+
+Sprawdzenie listy sysadminów.
+
+![mssqlclient-sysadmins-1](images/htb-18.PNG "Sprawdzenie listy sysadminów")
+![mssqlclient-sysadmins-2](images/htb-19.PNG "Sprawdzenie listy sysadminów")
+
+W celu znalezienia dodatkowych informacji o serwerze bazo danowym wykorzystano poniższą komendę, która służy do wylistowania katalogów i plików dla konkretnie podanej ścieżki.
+```
+EXEC xp_dirtree
+```
+1. Najpierw wyświetlono zawartość znajdującą się pod ścieżką `C:\`.
+```
+EXEC xp_dirtree 'C:\', 1, 1
+```
+
+![mssqlclient-enumeration-1](images/htb-20.PNG "Enumeracja katalogów i plików w ścieżce C:")
+
+2. Następnie wylistowano katalogi i pliki w ścieżce `C:\Users`
+```
+EXEC xp_dirtree 'C:\Users', 1, 1
+```
+
+![mssqlclient-enumeration-2](images/htb-21.PNG "Enumeracja katalogów i plików w ścieżce C:\Users")
+
+Znaleziono katalog użytkownika o nazwie *Raven*.
+
+3. Sprawdzono zawartość katalogu użytkownika *Raven*.
+```
+EXEC xp_dirtree 'C:\Users\Raven', 1, 1
+```
+
+![mssqlclient-enumeration-3](images/htb-22.PNG "Enumeracja katalogów i plików w ścieżce C:\Users\Raven")
+
+4. Wylistowano katalogi i pliki znajdujące się w ścieżce `C:\inetpub`
+```
+EXEC xp_dirtree 'C:\inetpub', 2, 1
+```
+
+![mssqlclient-enumeration-4](images/htb-23.PNG "Enumeracja katalogów i plików w ścieżce C:\inetpub")
+
+Znaleziono ciekawy plik o nazwie `website-backup-27-07-23-old.zip`.
+
+### Eksploitacja HTTP
+Spróbowano połączyć się ze stroną maszyny za pomocą nazwy domenowej `manager.htb`.
+
+![http-domain-name](images/htb-24.PNG "Próba połaczenia ze stroną maszyny")
+
+W celu sprawdzenia zawartości strony, pobrano `10.10.11.236/index.html`.
+
+![wget-index](images/htb-25.PNG "Pobranie zawartości strony index.html")
+
+Wylistowano wszystkie katalogi i pliki znajdujące się na stronie maszyny.
+
+![tree-10.10.11.236](images/htb-26.PNG "Wylistowanie zawartość strony maszyny")
+
+Pobrano oraz wyświetlono zawartość pliku `zip` z backupem strony, który został znaleziony w poprzednim podrozdziale.
+
+![wget-website-backup](images/htb-27.PNG "Pobranie backupu strony")
+![tree-website-backup](images/htb-28.PNG "Wyświetlenie zawartości pliku z backupem strony")
+
+Pośród wylistowanych katalogów i plików, znaleziono ukryty plik o nazwie `.old-conf.xml`.
+
+![cat-old-conf](images/htb-29.PNG "Wyświetlenie zawartości pliku .old-conf.xml")
+
+W pliku była zapisana informacja o danych logowania dla użytkownika *Raven*:
+- `username` - *raven*
+- `password` - *R4v3nBe5tD3veloP3r!123*
 
 ### Weryfikacja dostępu SMB
 Wykorzystano moduł Metasploit Framework `auxillary/smb/smb_login`, aby zweryfikować możliwość logowania do zasobów sieciowych SMB dla użytkownika *Raven*.
