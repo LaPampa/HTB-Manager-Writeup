@@ -81,7 +81,7 @@ Sprawdzono informację o tabelach w znalezionych bazach danych w `INFORMATION_SC
 ![mssqlclient-information_schema-tables-1](images/htb-14.PNG "Informacje o tabelach w znalezionych bazach danych")
 ![mssqlclient-information_schema-tables-2](images/htb-15.PNG "Informacje o tabelach w znalezionych bazach danych")
 
-Sprawdzenie, czy jest włączone logowanie na roota `sa`
+Sprawdzenie, czy jest włączone logowanie na administratora `sa`
 
 ![mssqlclient-sa](images/htb-16.PNG "Logowanie na roota")
 
@@ -165,7 +165,7 @@ Uruchomienie modułu pozwoliło na weryfikację dostępu dla tego użytkownika.
 
 ![msfconsole-smb-run](images/htb-31.PNG "Aktywacja modułu smb_login")
 
-Uzyskanie dostępu SMB do maszyny przeprowadzono z wykorzystaniem programu impacket-smblclient dla użytkowników *operator* i *Raven*. Po wyświetleniu zawartości otrzymano informację o braku wybranego udziału sieciowego.
+Uzyskanie dostępu SMB do maszyny przeprowadzono z wykorzystaniem programu `impacket-smbclient` dla użytkowników *operator* i *Raven*. Po wyświetleniu zawartości otrzymano informację o braku wybranego udziału sieciowego.
 
 ![impacket-smb-login1](images/htb-32.PNG "Logowanie SMB operator")
 ![impacket-smb-login2](images/htb-33.PNG "Logowanie SMB Raven")
